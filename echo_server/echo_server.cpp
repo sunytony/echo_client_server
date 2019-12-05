@@ -8,14 +8,14 @@
 #include <sys/socket.h> // for socket
 #include <pthread.h>
 #include <iostream>
-#include <vector>
+#include <list>
 
 using namespace std;
 
 typedef struct {
 	int childid;
 	int all_echo;
-	vector<int>* thread_list;
+	list<int>* thread_list;
 } MultipleArg;
 
 pthread_mutex_t mutex;
@@ -26,13 +26,14 @@ void dump(uint8_t* str, int num){
 	}
 }
 
-vector<int> user_list;
+list<int> user_list;
 
 void *server_listen(void *arg){
 	pthread_mutex_lock(&mutex);
-	(*((MultipleArg *)arg)->thread_list).push_back(((MultipleArg *)arg)->childid);
-	int index = (*((MultipleArg *)arg)->thread_list).size() - 1;
+	(*((MultipleArg *)arg)->thread_list).push_front(((MultipleArg *)arg)->childid);
 	int i = ((MultipleArg *)arg)->all_echo;
+	list<int>::iterator itor = (*((MultipleArg *)arg)->thread_list).begin();
+	list<int>::iterator itor2 = (*((MultipleArg *)arg)->thread_list).begin();
 	cout << (*((MultipleArg *)arg)->thread_list).size() << "size" << endl;
 	pthread_mutex_unlock(&mutex);
 
@@ -79,8 +80,8 @@ void *server_listen(void *arg){
 				break;
 			}
 			pthread_mutex_lock(&mutex);
-			for(int i = 0; i < (*((MultipleArg *)arg)->thread_list).size(); ++i){
-				ssize_t sent = send((*((MultipleArg *)arg)->thread_list)[i], buf, strlen(buf), 0);
+			for(itor2 = (*((MultipleArg *)arg)->thread_list).begin(); itor2 != (*((MultipleArg *)arg)->thread_list).end(); ++itor2){
+				ssize_t sent = send(*itor2, buf, strlen(buf), 0);
 				if (sent == 0) {
 					perror("send failed");
 					break;
@@ -90,7 +91,8 @@ void *server_listen(void *arg){
 		}
 	}
 	pthread_mutex_lock(&mutex);
-	(*((MultipleArg *)arg)->thread_list).erase((*((MultipleArg *)arg)->thread_list).begin() + index);
+	(*((MultipleArg *)arg)->thread_list).erase(itor);
+	printf("arg : %x", arg);
 	free(arg);
 	pthread_mutex_unlock(&mutex);
 }
